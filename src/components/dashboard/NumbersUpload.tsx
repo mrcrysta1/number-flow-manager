@@ -27,7 +27,31 @@ const NumbersUpload = ({ userId }: NumbersUploadProps) => {
         .map((n) => n.trim())
         .filter((n) => n);
 
-      const numberRecords = numbers.map((number) => ({
+      // Check for duplicates
+      const { data: existingNumbers } = await supabase
+        .from("numbers")
+        .select("number, uploaded_by, profiles(username)")
+        .in("number", numbers);
+
+      const duplicates = existingNumbers || [];
+      const duplicateNumbers = new Set(duplicates.map((d) => d.number));
+
+      // Show alerts for duplicates
+      duplicates.forEach((dup) => {
+        const username = (dup.profiles as any)?.username || "Unknown User";
+        toast.error(`Number "${dup.number}" already exists and belongs to: ${username}`);
+      });
+
+      // Filter out duplicates
+      const uniqueNumbers = numbers.filter((num) => !duplicateNumbers.has(num));
+
+      if (uniqueNumbers.length === 0) {
+        toast.error("All numbers already exist in the system");
+        setUploading(false);
+        return;
+      }
+
+      const numberRecords = uniqueNumbers.map((number) => ({
         number,
         status: "available",
         uploaded_by: userId,
@@ -37,7 +61,10 @@ const NumbersUpload = ({ userId }: NumbersUploadProps) => {
 
       if (error) throw error;
 
-      toast.success(`Successfully uploaded ${numbers.length} numbers`);
+      toast.success(`Successfully uploaded ${uniqueNumbers.length} new numbers`);
+      if (duplicates.length > 0) {
+        toast.info(`Skipped ${duplicates.length} duplicate numbers`);
+      }
       setTextInput("");
     } catch (error: any) {
       toast.error(error.message || "Failed to upload numbers");
@@ -58,7 +85,32 @@ const NumbersUpload = ({ userId }: NumbersUploadProps) => {
         .map((n) => n.trim())
         .filter((n) => n);
 
-      const numberRecords = numbers.map((number) => ({
+      // Check for duplicates
+      const { data: existingNumbers } = await supabase
+        .from("numbers")
+        .select("number, uploaded_by, profiles(username)")
+        .in("number", numbers);
+
+      const duplicates = existingNumbers || [];
+      const duplicateNumbers = new Set(duplicates.map((d) => d.number));
+
+      // Show alerts for duplicates
+      duplicates.forEach((dup) => {
+        const username = (dup.profiles as any)?.username || "Unknown User";
+        toast.error(`Number "${dup.number}" already exists and belongs to: ${username}`);
+      });
+
+      // Filter out duplicates
+      const uniqueNumbers = numbers.filter((num) => !duplicateNumbers.has(num));
+
+      if (uniqueNumbers.length === 0) {
+        toast.error("All numbers already exist in the system");
+        e.target.value = "";
+        setUploading(false);
+        return;
+      }
+
+      const numberRecords = uniqueNumbers.map((number) => ({
         number,
         status: "available",
         uploaded_by: userId,
@@ -68,7 +120,10 @@ const NumbersUpload = ({ userId }: NumbersUploadProps) => {
 
       if (error) throw error;
 
-      toast.success(`Successfully uploaded ${numbers.length} numbers from file`);
+      toast.success(`Successfully uploaded ${uniqueNumbers.length} new numbers from file`);
+      if (duplicates.length > 0) {
+        toast.info(`Skipped ${duplicates.length} duplicate numbers`);
+      }
       e.target.value = "";
     } catch (error: any) {
       toast.error(error.message || "Failed to upload file");
